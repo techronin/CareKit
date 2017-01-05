@@ -40,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
  Create an instance of this class and attach it to an event using the OCKCarePlanStore API.
  */
 OCK_CLASS_AVAILABLE
-@interface OCKCarePlanEventResult : NSObject
+@interface OCKCarePlanEventResult : NSObject <NSSecureCoding>
 
 - (instancetype)init NS_UNAVAILABLE;
 

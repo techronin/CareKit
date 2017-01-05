@@ -57,6 +57,8 @@ NS_ASSUME_NONNULL_BEGIN
 insertIntoManagedObjectContext:(nullable NSManagedObjectContext *)context
                           item:(OCKCarePlanActivity *)item;
 
+- (void)updateWithItem:(OCKCarePlanActivity *)item;
+
 @property (nullable, nonatomic, retain) id color;
 @property (nullable, nonatomic, retain) NSString *identifier;
 @property (nullable, nonatomic, retain) NSString *groupIdentifier;

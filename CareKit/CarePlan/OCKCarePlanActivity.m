@@ -219,19 +219,23 @@ insertIntoManagedObjectContext:(NSManagedObjectContext *)context
     NSParameterAssert(item);
     self = [self initWithEntity:entity insertIntoManagedObjectContext:context];
     if (self) {
-        self.identifier = item.identifier;
-        self.groupIdentifier = item.groupIdentifier;
-        self.title = item.title;
-        self.text = item.text;
-        self.instructions = item.instructions;
-        self.color = item.tintColor;
-        self.imageURL = OCKBookmarkDataFromURL(item.imageURL);
-        self.schedule = item.schedule;
-        self.type = @(item.type);
-        self.userInfo = item.userInfo;
-        self.resultResettable  = @(item.resultResettable);
+        [self updateWithItem:item];
     }
     return self;
+}
+
+- (void)updateWithItem:(OCKCarePlanActivity *)item {
+    self.identifier = item.identifier;
+    self.groupIdentifier = item.groupIdentifier;
+    self.title = item.title;
+    self.text = item.text;
+    self.instructions = item.instructions;
+    self.color = item.tintColor;
+    self.imageURL = OCKBookmarkDataFromURL(item.imageURL);
+    self.schedule = item.schedule;
+    self.type = @(item.type);
+    self.userInfo = item.userInfo;
+    self.resultResettable  = @(item.resultResettable);
 }
 
 - (NSString *)description {

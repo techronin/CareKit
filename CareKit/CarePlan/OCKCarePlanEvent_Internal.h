@@ -45,6 +45,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic) OCKCarePlanEventState state;
 
+@property (nonatomic, nullable) NSDate *modificationDate;
+
 @property (nonatomic, nullable) OCKCarePlanEventResult *result;
 
 @end
@@ -74,6 +76,7 @@ insertIntoManagedObjectContext:(nullable NSManagedObjectContext *)context
 @property (nullable, nonatomic, retain) NSNumber *state;
 @property (nullable, nonatomic, retain) OCKCDCarePlanEventResult *result;
 @property (nullable, nonatomic, retain) OCKCDCarePlanActivity *activity;
+@property (nullable, nonatomic, retain) NSDate *modificationDate;
 
 @end
 

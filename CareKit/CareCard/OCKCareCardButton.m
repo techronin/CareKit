@@ -56,12 +56,12 @@ static const CGFloat ButtonSize = 30.0;
 }
 
 - (void)setHighlighted:(BOOL)highlighted {
-    [self updateFillColorForSelection:highlighted];
+    [self updateFillColorForSelection:highlighted || self.isSelected];
     [super setHighlighted:highlighted];
 }
 
 - (void)setSelected:(BOOL)selected {
-    [self updateFillColorForSelection:selected];
+    [self updateFillColorForSelection:selected || self.isHighlighted];
     [super setSelected:selected];
 }
 

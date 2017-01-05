@@ -344,6 +344,40 @@
             );
 }
 
+- (instancetype)initWithCoder:(NSCoder *)coder {
+    self = [super init];
+    if (self) {
+        OCK_DECODE_OBJ_CLASS(coder, creationDate, NSDate);
+        OCK_DECODE_OBJ_CLASS(coder, valueString, NSString);
+        OCK_DECODE_OBJ_CLASS(coder, unitString, NSString);
+        OCK_DECODE_OBJ_CLASS(coder, userInfo, NSDictionary);
+        OCK_DECODE_OBJ_CLASS(coder, sampleUUID, NSUUID);
+        OCK_DECODE_OBJ_CLASS(coder, sampleType, HKSampleType);
+        OCK_DECODE_OBJ_CLASS(coder, displayUnit, HKUnit);
+        OCK_DECODE_OBJ_CLASS(coder, unitStringKeys, NSDictionary);
+        OCK_DECODE_OBJ_CLASS(coder, quantityStringFormatter, NSNumberFormatter);
+        OCK_DECODE_OBJ_CLASS(coder, categoryValueStringKeys, NSDictionary);
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder {
+    OCK_ENCODE_OBJ(coder, creationDate);
+    OCK_ENCODE_OBJ(coder, valueString);
+    OCK_ENCODE_OBJ(coder, unitString);
+    OCK_ENCODE_OBJ(coder, userInfo);
+    OCK_ENCODE_OBJ(coder, sampleUUID);
+    OCK_ENCODE_OBJ(coder, sampleType);
+    OCK_ENCODE_OBJ(coder, displayUnit);
+    OCK_ENCODE_OBJ(coder, unitStringKeys);
+    OCK_ENCODE_OBJ(coder, quantityStringFormatter);
+    OCK_ENCODE_OBJ(coder, categoryValueStringKeys);
+}
+
++ (BOOL)supportsSecureCoding {
+    return YES;
+}
+
 @end
 
 

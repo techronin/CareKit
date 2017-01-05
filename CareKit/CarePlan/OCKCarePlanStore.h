@@ -61,6 +61,20 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)carePlanStoreActivityListDidChange:(OCKCarePlanStore *)store;
 
+/**
+ The care plan store events following this call are triggered by saving cloud data in the store.
+ 
+ @param store   The care plan store.
+ */
+- (void)carePlanStoreWillBeginEventsForCloudUpdates:(OCKCarePlanStore *)store;
+
+/**
+ The care plan store events following this call are triggered by saving locally generated data in the store.
+ 
+ @param store   The care plan store.
+ */
+- (void)carePlanStoreDidEndEventsForCloudUpdates:(OCKCarePlanStore *)store;
+
 @end
 
 
@@ -119,6 +133,23 @@ You can use the watch delegate to subscribe a watch app to notifications of chan
 - (void)addActivity:(OCKCarePlanActivity *)activity
          completion:(void (^)(BOOL success,  NSError * _Nullable error))completion;
 
+- (void)addCloudActivity:(OCKCarePlanActivity *)activity
+              completion:(void (^)(BOOL success,  NSError * _Nullable error))completion;
+
+/**
+ Update activities with activities received from the cloud.
+ 
+ @param     addedActivities     Activity objects to be added.
+ @param     updatedActivities   Activity objects to be updated.
+ @param     removedActivities   Activity objects to be removed.
+ @param     completion  Completion block to return operation result.
+ */
+- (void)addActivities:(NSArray<OCKCarePlanActivity *> *)addedActivities
+     updateActivities:(NSArray<OCKCarePlanActivity *> *)updatedActivities
+     removeActivities:(NSArray<OCKCarePlanActivity *> *)removedActivities
+    isChangeFromCloud:(BOOL)isCloud
+           completion:(void (^)(BOOL success, NSError * _Nullable error))completion;
+
 /**
  Get all activities in the store.
  
@@ -176,6 +207,17 @@ You can use the watch delegate to subscribe a watch app to notifications of chan
 - (void)removeActivity:(OCKCarePlanActivity *)activity
             completion:(void (^)(BOOL success, NSError * _Nullable error))completion;
 
+- (void)removeCloudActivity:(OCKCarePlanActivity *)activity
+                 completion:(void (^)(BOOL success, NSError * _Nullable error))completion;
+
+
+/**
+ Get all events in the store.
+ 
+ @param     completion  A completion block that returns the result of the operation and a list of events.
+ */
+- (void)eventsWithCompletion:(void (^)(BOOL success, NSArray<OCKCarePlanEvent *> *events, NSError * _Nullable error))completion;
+
 /**
 Get all the `OCKCarePlanEvent` objects for a given date.
  
@@ -201,6 +243,16 @@ Get all the `OCKCarePlanEvent` objects for a given date.
                completion:(void (^)(NSArray<OCKCarePlanEvent *> *events, NSError * _Nullable error))completion;
 
 /**
+ Get all events that belog to an activity with the given activity type.
+ 
+ @param     activityType    The actitity type to filter events
+ @param     completion      A completion block that returns the result of the operation and a list of event objects.
+ */
+- (void)eventsForActivitiesWithType:(OCKCarePlanActivityType)activityType
+                         completion:(void (^)(BOOL success, NSArray<OCKCarePlanEvent *> *events, NSError * _Nullable error))completion;
+
+
+/**
  Change the state of an event and optionally attach a result object to it.
  All events start with OCKCarePlanEventStateInitial.
  
@@ -214,7 +266,10 @@ Get all the `OCKCarePlanEvent` objects for a given date.
               state:(OCKCarePlanEventState)state
          completion:(void (^)(BOOL success, OCKCarePlanEvent * _Nullable event, NSError * _Nullable error))completion;
 
-
+- (void)updateCloudEvent:(OCKCarePlanEvent *)event
+              withResult:(nullable OCKCarePlanEventResult *)result
+                   state:(OCKCarePlanEventState)state
+              completion:(void (^)(BOOL success, OCKCarePlanEvent * _Nullable event, NSError * _Nullable error))completion;
 
 /**
  Get the daily event completion status within a date range.

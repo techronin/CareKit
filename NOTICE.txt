@@ -1,0 +1,11 @@
+This is a fork of Apple's CareKit framework:
+
+    CareKit Framework
+    Copyright (c) 2016, Apple Inc. All rights reserved.
+    See LICENSE file.
+
+The software contains a ZeroKit sample app:
+
+    CareKitZeroKitSample
+    Copyright (c) 2016, Tresorit. All rights reserved.
+    See ZeroKitSample/LICENSE.txt

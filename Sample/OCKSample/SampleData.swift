@@ -77,9 +77,12 @@ class SampleData: NSObject {
     
     // MARK: Initialization
     
-    required init(carePlanStore: OCKCarePlanStore) {
+    required init(carePlanStore: OCKCarePlanStore, completion: (() -> Void)? = nil) {
         super.init()
-
+        
+        let activitiesCount = activities.count
+        var addedCount = 0
+        
         // Populate the store with the sample activities.
         for sampleActivity in activities {
             let carePlanActivity = sampleActivity.carePlanActivity()
@@ -87,6 +90,16 @@ class SampleData: NSObject {
             carePlanStore.add(carePlanActivity) { success, error in
                 if !success {
                     print(error?.localizedDescription)
+                }
+                
+                DispatchQueue.main.async {
+                    addedCount += 1
+                    
+                    if addedCount == activitiesCount {
+                        if let completion = completion {
+                            completion()
+                        }
+                    }
                 }
             }
         }

@@ -48,6 +48,7 @@
              _result = [[OCKCarePlanEventResult alloc] initWithCoreDataObject:cdObject.result];
         }
         _activity = [[OCKCarePlanActivity alloc] initWithCoreDataObject:cdObject.activity];
+        _modificationDate = cdObject.modificationDate;
     }
     return self;
 }
@@ -99,6 +100,32 @@
             @(self.occurrenceIndexOfDay)];
 }
 
+- (instancetype)initWithCoder:(NSCoder *)coder {
+    self = [super init];
+    if (self) {
+        OCK_DECODE_INTEGER(coder, occurrenceIndexOfDay);
+        OCK_DECODE_INTEGER(coder, numberOfDaysSinceStart);
+        OCK_DECODE_OBJ_CLASS(coder, activity, OCKCarePlanActivity);
+        OCK_DECODE_ENUM(coder, state);
+        OCK_DECODE_OBJ_CLASS(coder, result, OCKCarePlanEventResult);
+        OCK_DECODE_OBJ_CLASS(coder, modificationDate, NSDate);
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder {
+    OCK_ENCODE_INTEGER(coder, occurrenceIndexOfDay);
+    OCK_ENCODE_INTEGER(coder, numberOfDaysSinceStart);
+    OCK_ENCODE_OBJ(coder, activity);
+    OCK_ENCODE_ENUM(coder, state);
+    OCK_ENCODE_OBJ(coder, result);
+    OCK_ENCODE_OBJ(coder, modificationDate);
+}
+
++ (BOOL)supportsSecureCoding {
+    return YES;
+}
+
 @end
 
 
@@ -118,6 +145,7 @@ insertIntoManagedObjectContext:(NSManagedObjectContext *)context
         self.occurrenceIndexOfDay = @(event.occurrenceIndexOfDay);
         self.numberOfDaysSinceStart = @(event.numberOfDaysSinceStart);
         self.activity = cdActivity;
+        self.modificationDate = event.modificationDate;
         [self updateWithState:event.state result:cdResult];
     }
     return self;
@@ -143,5 +171,6 @@ insertIntoManagedObjectContext:(NSManagedObjectContext *)context
 @dynamic state;
 @dynamic result;
 @dynamic activity;
+@dynamic modificationDate;
 
 @end

@@ -61,7 +61,7 @@ typedef NS_ENUM(NSInteger, OCKCarePlanEventState) {
  Use OCKCarePlanStore API to update an event's state and change its result.
  */
 OCK_CLASS_AVAILABLE
-@interface OCKCarePlanEvent : NSObject 
+@interface OCKCarePlanEvent : NSObject <NSSecureCoding>
 
 - (instancetype)init NS_UNAVAILABLE;
 
@@ -99,6 +99,11 @@ OCK_CLASS_AVAILABLE
  A result object can be attached to event by using the OCKCarePlanStore API.
  */
 @property (nonatomic, readonly, nullable) OCKCarePlanEventResult *result;
+
+/**
+ Last modification date of this event.
+ */
+@property (nonatomic, readonly, nullable) NSDate *modificationDate;
 
 @end
 

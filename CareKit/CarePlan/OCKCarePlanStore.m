@@ -75,6 +75,7 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
     dispatch_queue_t _queue;
     NSManagedObjectContext *_managedObjectContext;
     HKHealthStore *_healthStore;
+    BOOL _isChangeFromCloud;
 }
 
 - (instancetype)init {
@@ -112,6 +113,44 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
     return [_persistenceDirectoryURL.path stringByAppendingPathComponent:CoreDataFileName];
 }
 
+- (void)setChangeFromCloud:(BOOL)isCloud {
+    if (_isChangeFromCloud == isCloud) {
+        return;
+    }
+    
+    _isChangeFromCloud = isCloud;
+    
+    if (_isChangeFromCloud) {
+        
+        if (_careCardUIDelegate && [_careCardUIDelegate respondsToSelector:@selector(carePlanStoreWillBeginEventsForCloudUpdates:)]) {
+            [_careCardUIDelegate carePlanStoreWillBeginEventsForCloudUpdates:self];
+        }
+        if (_symptomTrackerUIDelegate && [_symptomTrackerUIDelegate respondsToSelector:@selector(carePlanStoreWillBeginEventsForCloudUpdates:)]) {
+            [_symptomTrackerUIDelegate carePlanStoreWillBeginEventsForCloudUpdates:self];
+        }
+        if (_delegate && [_delegate respondsToSelector:@selector(carePlanStoreWillBeginEventsForCloudUpdates:)]) {
+            [_delegate carePlanStoreWillBeginEventsForCloudUpdates:self];
+        }
+        if (_watchDelegate && [_watchDelegate respondsToSelector:@selector(carePlanStoreWillBeginEventsForCloudUpdates:)]) {
+            [_watchDelegate carePlanStoreWillBeginEventsForCloudUpdates:self];
+        }
+        
+    } else {
+        
+        if (_careCardUIDelegate && [_careCardUIDelegate respondsToSelector:@selector(carePlanStoreDidEndEventsForCloudUpdates:)]) {
+            [_careCardUIDelegate carePlanStoreDidEndEventsForCloudUpdates:self];
+        }
+        if (_symptomTrackerUIDelegate && [_symptomTrackerUIDelegate respondsToSelector:@selector(carePlanStoreDidEndEventsForCloudUpdates:)]) {
+            [_symptomTrackerUIDelegate carePlanStoreDidEndEventsForCloudUpdates:self];
+        }
+        if (_delegate && [_delegate respondsToSelector:@selector(carePlanStoreDidEndEventsForCloudUpdates:)]) {
+            [_delegate carePlanStoreDidEndEventsForCloudUpdates:self];
+        }
+        if (_watchDelegate && [_watchDelegate respondsToSelector:@selector(carePlanStoreDidEndEventsForCloudUpdates:)]) {
+            [_watchDelegate carePlanStoreDidEndEventsForCloudUpdates:self];
+        }
+    }
+}
 
 #pragma mark - generic coredata operations
 
@@ -410,9 +449,11 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
     [self fetchActivitiesWithPredicate:predicate completion:completion];
 }
 
-- (void)handleActivityListChange:(BOOL)result type:(OCKCarePlanActivityType)type {
+- (void)handleActivityListChange:(BOOL)result type:(OCKCarePlanActivityType)type isChangeFromCloud:(BOOL)isCloud {
     if (result){
         dispatch_async(dispatch_get_main_queue(), ^{
+            [self setChangeFromCloud:isCloud];
+            
             if (type == OCKCarePlanActivityTypeIntervention &&
                 _careCardUIDelegate && [_careCardUIDelegate respondsToSelector:@selector(carePlanStoreActivityListDidChange:)]) {
                 [_careCardUIDelegate carePlanStoreActivityListDidChange:self];
@@ -432,6 +473,23 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
 }
 
 - (void)addActivity:(OCKCarePlanActivity *)activity
+         completion:(void (^)(BOOL success, NSError *error))completion {
+    
+    [self addActivity:activity
+    isChangeFromCloud:NO
+           completion:completion];
+}
+
+- (void)addCloudActivity:(OCKCarePlanActivity *)activity
+              completion:(void (^)(BOOL success,  NSError * _Nullable error))completion {
+    
+    [self addActivity:activity
+    isChangeFromCloud:YES
+           completion:completion];
+}
+
+- (void)addActivity:(OCKCarePlanActivity *)activity
+  isChangeFromCloud:(BOOL)isCloud
          completion:(void (^)(BOOL success, NSError *error))completion {
     OCKThrowInvalidArgumentExceptionIfNil(activity);
     
@@ -454,12 +512,144 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
         }
         dispatch_async(_queue, ^{
             completion(result, errorOut);
-            [self handleActivityListChange:result type:activity.type];
+            [self handleActivityListChange:result type:activity.type isChangeFromCloud:isCloud];
+        });
+    }];
+}
+
+- (void)addActivities:(NSArray<OCKCarePlanActivity *> *)addedActivities
+     updateActivities:(NSArray<OCKCarePlanActivity *> *)updatedActivities
+     removeActivities:(NSArray<OCKCarePlanActivity *> *)removedActivities
+    isChangeFromCloud:(BOOL)isCloud
+           completion:(void (^)(BOOL success, NSError * _Nullable error))completion {
+    
+    __block NSError *errorOut = nil;
+    NSManagedObjectContext *context = _managedObjectContext;
+    
+    if (context == nil) {
+        dispatch_async(_queue, ^{
+            completion(NO, errorOut);
+        });
+        return;
+    }
+    
+    if (addedActivities.count == 0 &&
+        updatedActivities.count == 0 &&
+        removedActivities.count == 0) {
+        dispatch_async(_queue, ^{
+            completion(YES, nil);
+        });
+        return;
+    }
+    
+    __weak typeof(self) weakSelf = self;
+    [context performBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        
+        NSEntityDescription *entity = [NSEntityDescription entityForName:OCKEntityNameActivity
+                                                  inManagedObjectContext:context];
+        
+        BOOL hasIntervention = NO;
+        BOOL hasAssessment = NO;
+        
+        // Fetch activities
+        NSMutableSet *allAcitivityIDs = [NSMutableSet new];
+        [allAcitivityIDs addObjectsFromArray:[addedActivities valueForKey:@"identifier"]];
+        [allAcitivityIDs addObjectsFromArray:[updatedActivities valueForKey:@"identifier"]];
+        [allAcitivityIDs addObjectsFromArray:[removedActivities valueForKey:@"identifier"]];
+        
+        NSFetchRequest *request = [NSFetchRequest fetchRequestWithEntityName:OCKEntityNameActivity];
+        request.predicate = [NSPredicate predicateWithFormat:@"%K IN %@", OCKAttributeNameIdentifier, allAcitivityIDs];
+    
+        NSArray<OCKCDCarePlanActivity *> *fetchedActivities = [context executeFetchRequest:request error:&errorOut];
+        
+        if (errorOut) {
+            dispatch_async(_queue, ^{
+                completion(NO, errorOut);
+            });
+            return;
+        }
+        
+        OCKCDCarePlanActivity *(^activityWithID)(NSString *) = ^(NSString *identifier){
+            OCKCDCarePlanActivity *retVal = nil;
+            for (OCKCDCarePlanActivity *activity in fetchedActivities) {
+                if ([activity.identifier isEqualToString:identifier]) {
+                    retVal = activity;
+                    break;
+                }
+            }
+            return retVal;
+        };
+        
+        // Add activities
+        for (OCKCarePlanActivity *activity in addedActivities) {
+            if (!activityWithID(activity.identifier)) {
+                NSManagedObject *cdObject;
+                cdObject = [[OCKCDCarePlanActivity alloc] initWithEntity:entity
+                                          insertIntoManagedObjectContext:context
+                                                                    item:activity];
+                hasIntervention = hasIntervention || activity.type == OCKCarePlanActivityTypeIntervention;
+                hasAssessment = hasAssessment || activity.type == OCKCarePlanActivityTypeAssessment;
+            }
+        }
+        
+        // Update activities
+        for (OCKCarePlanActivity *activity in updatedActivities) {
+            OCKCDCarePlanActivity *existingActivity = activityWithID(activity.identifier);
+            if (existingActivity) {
+                [existingActivity updateWithItem:activity];
+                hasIntervention = hasIntervention || activity.type == OCKCarePlanActivityTypeIntervention;
+                hasAssessment = hasAssessment || activity.type == OCKCarePlanActivityTypeAssessment;
+            }
+        }
+        
+        // Remove activities
+        for (OCKCarePlanActivity *activity in removedActivities) {
+            OCKCDCarePlanActivity *existingActivity = activityWithID(activity.identifier);
+            if (existingActivity) {
+                [context deleteObject:existingActivity];
+                hasIntervention = hasIntervention || activity.type == OCKCarePlanActivityTypeIntervention;
+                hasAssessment = hasAssessment || activity.type == OCKCarePlanActivityTypeAssessment;
+            }
+        }
+        
+        NSError *errorOut = nil;
+        BOOL result = [context save:&errorOut];
+        if (result) {
+            _cachedActivities = nil;
+        }
+        
+        dispatch_async(_queue, ^{
+            completion(result, errorOut);
+            // TODO: notify change once
+            if (hasIntervention) {
+                [strongSelf handleActivityListChange:result type:OCKCarePlanActivityTypeIntervention isChangeFromCloud:YES];
+            }
+            if (hasAssessment) {
+                [strongSelf handleActivityListChange:result type:OCKCarePlanActivityTypeAssessment isChangeFromCloud:YES];
+            }
         });
     }];
 }
 
 - (void)removeActivity:(OCKCarePlanActivity *)activity
+            completion:(void (^)(BOOL success, NSError *error))completion {
+    
+    [self removeActivity:activity
+       isChangeFromCloud:NO
+              completion:completion];
+}
+
+- (void)removeCloudActivity:(OCKCarePlanActivity *)activity
+                 completion:(void (^)(BOOL success, NSError * _Nullable error))completion {
+    
+    [self removeActivity:activity
+       isChangeFromCloud:YES
+              completion:completion];
+}
+
+- (void)removeActivity:(OCKCarePlanActivity *)activity
+     isChangeFromCloud:(BOOL)isCloud
             completion:(void (^)(BOOL success, NSError *error))completion {
     OCKThrowInvalidArgumentExceptionIfNil(activity);
     
@@ -483,7 +673,7 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
         
         dispatch_async(_queue, ^{
             completion(result, error);
-            [self handleActivityListChange:result type:activity.type];
+            [self handleActivityListChange:result type:activity.type isChangeFromCloud:isCloud];
         });
     }];
 }
@@ -527,7 +717,27 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
         }
         dispatch_async(_queue, ^{
             completion(result, modifiedActivity, errorOut);
-            [self handleActivityListChange:result type:activity.type];
+            [self handleActivityListChange:result type:activity.type isChangeFromCloud:NO];
+        });
+    }];
+}
+
+- (void)eventsWithCompletion:(void (^)(BOOL success, NSArray<OCKCarePlanEvent *> *events, NSError * _Nullable error))completion {
+    __block NSError *error = nil;
+    NSManagedObjectContext *context = _managedObjectContext;
+    if (context == nil) {
+        completion(NO, nil, error);
+        return;
+    }
+
+    [context performBlock:^{
+        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"TRUEPREDICATE"];
+        NSArray<OCKCarePlanEvent *> *savedEvents = (NSArray<OCKCarePlanEvent *> *)[self block_fetchItemsWithEntityName:OCKEntityNameEvent
+                                                                                                             predicate:predicate
+                                                                                                                 class:[OCKCarePlanEvent class]
+                                                                                                                 error:&error];
+        dispatch_async(_queue, ^{
+            completion(error == nil, savedEvents, error);
         });
     }];
 }
@@ -633,9 +843,58 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
     }
 }
 
+- (void)eventsForActivitiesWithType:(OCKCarePlanActivityType)activityType
+                         completion:(void (^)(BOOL success, NSArray<OCKCarePlanEvent *> *events, NSError * _Nullable error))completion {
+    
+    NSManagedObjectContext *context = _managedObjectContext;
+    if (context == nil) {
+        completion(NO, nil, nil);
+        return;
+    }
+    
+    [context performBlock:^{
+        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"%K = %d", @"activity.type", activityType];
+        NSError *error = nil;
+        NSArray<OCKCarePlanEvent *> *savedEvents = (NSArray<OCKCarePlanEvent *> *)[self block_fetchItemsWithEntityName:OCKEntityNameEvent
+                                                                                                                   predicate:predicate
+                                                                                                                       class:[OCKCarePlanEvent class]
+                                                                                                                       error:&error];
+        [self block_fetchHKSampleForEvents:savedEvents];
+        
+        dispatch_async(_queue, ^{
+            completion(error == nil, savedEvents, error);
+        });
+    }];
+}
+
 - (void)updateEvent:(OCKCarePlanEvent *)event
          withResult:(OCKCarePlanEventResult *)result
               state:(OCKCarePlanEventState)state
+         completion:(void (^)(BOOL success, OCKCarePlanEvent *event, NSError *error))completion {
+    
+    [self updateEvent:event
+           withResult:result
+                state:state
+    isChangeFromCloud:NO
+           completion:completion];
+}
+
+- (void)updateCloudEvent:(OCKCarePlanEvent *)event
+              withResult:(nullable OCKCarePlanEventResult *)result
+                   state:(OCKCarePlanEventState)state
+              completion:(void (^)(BOOL success, OCKCarePlanEvent * _Nullable event, NSError * _Nullable error))completion {
+    
+    [self updateEvent:event
+           withResult:result
+                state:state
+    isChangeFromCloud:YES
+           completion:completion];
+}
+
+- (void)updateEvent:(OCKCarePlanEvent *)event
+         withResult:(OCKCarePlanEventResult *)result
+              state:(OCKCarePlanEventState)state
+  isChangeFromCloud:(BOOL)isCloud
          completion:(void (^)(BOOL success, OCKCarePlanEvent *event, NSError *error))completion {
     
     OCKThrowInvalidArgumentExceptionIfNil(event);
@@ -651,6 +910,11 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
     OCKCarePlanEvent *copiedEvent = [event copy];
     copiedEvent.state = state;
     copiedEvent.result = result;
+    
+    if (!isCloud) {
+        // Update modification date only if the event was locally edited
+        copiedEvent.modificationDate = [NSDate date];
+    }
     
     __block NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:OCKEntityNameEvent];
     fetchRequest.predicate = [NSPredicate predicateWithFormat:@"%K = %d AND %K = %d AND %K = %@",
@@ -687,6 +951,7 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
                 }
                 
                 [cdEvent updateWithState:copiedEvent.state result:cdResult];
+                cdEvent.modificationDate = copiedEvent.modificationDate;
 
                 saved = [context save:&errorOut];
                 
@@ -727,6 +992,8 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
                         }
                         
                         [cdEvent updateWithState:copiedEvent.state result:cdResult];
+                        cdEvent.modificationDate = copiedEvent.modificationDate;
+                        
                         saved = [context save:&errorOut];
                     }
                 }
@@ -747,6 +1014,8 @@ static NSString * const OCKAttributeNameDayIndex = @"numberOfDaysSinceStart";
                 OCKCarePlanActivityType type = event.activity.type;
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
+                    [self setChangeFromCloud:isCloud];
+                    
                     if(type == OCKCarePlanActivityTypeIntervention &&
                        _careCardUIDelegate &&
                        [_careCardUIDelegate respondsToSelector:@selector(carePlanStore:didReceiveUpdateOfEvent:)]) {

@@ -3,3 +3,6 @@
 	url = https://github.com/ResearchKit/ResearchKit.git
 	branch = stable
 
+[submodule "ZeroKit"]
+	path = ZeroKit
+	url = https://github.com/tresorit/ZeroKit-iOS-SDK.git

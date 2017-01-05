@@ -419,7 +419,8 @@
 - (void)carePlanStore:(OCKCarePlanStore *)store didReceiveUpdateOfEvent:(OCKCarePlanEvent *)event {
     for (NSMutableArray<OCKCarePlanEvent *> *events in _events) {
         if ([events.firstObject.activity.identifier isEqualToString:event.activity.identifier]) {
-            if (events[event.occurrenceIndexOfDay].numberOfDaysSinceStart == event.numberOfDaysSinceStart) {
+            if (event.occurrenceIndexOfDay < events.count &&
+                events[event.occurrenceIndexOfDay].numberOfDaysSinceStart == event.numberOfDaysSinceStart) {
                 [events replaceObjectAtIndex:event.occurrenceIndexOfDay withObject:event];
                 [self updateHeaderView];
                 

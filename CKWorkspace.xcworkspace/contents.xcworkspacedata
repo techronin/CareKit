@@ -10,4 +10,7 @@
    <FileRef
       location = "group:Sample/OCKSample.xcodeproj">
    </FileRef>
+   <FileRef
+      location = "group:ZeroKitSample/CareKitZeroKitSample.xcodeproj">
+   </FileRef>
 </Workspace>
