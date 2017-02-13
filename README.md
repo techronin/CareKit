@@ -29,13 +29,13 @@ In the `ZeroKitSample/CareKitZeroKitSample/ExampleAppMock.plist` set the values 
 
 ```xml
 <key>ZeroKitAPIURL</key>
-<string>https://host-{hostid}.api.tresorit.io/tenant-{tenantid}/static/v4/api.html</string>
+<string>{TenantBaseUrl}/static/v4/api.html</string>
 <key>AdminUserId</key>
-<string>admin@{tenantid}.tresorit.io</string>
+<string>admin@{TenantId}.tresorit.io</string>
 <key>AdminKey</key>
-<string>{adminkey}</string>
+<string>{AdminKey}</string>
 <key>ApiRoot</key>
-<string>https://host-{hostid}.api.tresorit.io/tenant-{tenantid}</string>
+<string>{TenantBaseUrl}</string>
 ```
 
 ## 2. Configuring the App ID
